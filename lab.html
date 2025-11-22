@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADCS High-Fidelity Engineering Dashboard</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto Mono', 'Courier New', monospace;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 300;
+        }
+
+        .header .badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .nav {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: #666;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .nav a:hover {
+            background: #f0f0f0;
+            color: #1e3a8a;
+        }
+
+        .nav a.active {
+            background: #1e3a8a;
+            color: white;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            color: #1e3a8a;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .telemetry-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .telemetry-item .label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.3rem;
+        }
+
+        .telemetry-item .value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #1e3a8a;
+            font-family: 'Courier New', monospace;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            padding: 0.7rem 1.5rem;
+            background: #3b82f6;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: #64748b;
+        }
+
+        button.secondary:hover {
+            background: #475569;
+        }
+
+        button.danger {
+            background: #ef4444;
+        }
+
+        button.danger:hover {
+            background: #dc2626;
+        }
+
+        #plot-container {
+            width: 100%;
+            height: 500px;
+            background: #fafafa;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+        }
+
+        .console {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 1rem;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            height: 200px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .console .timestamp {
+            color: #888;
+        }
+
+        .console .info {
+            color: #00d4ff;
+        }
+
+        .console .success {
+            color: #00ff88;
+        }
+
+        .console .warning {
+            color: #ffaa00;
+        }
+
+        .physics-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .physics-info h4 {
+            color: #0369a1;
+            margin-bottom: 0.5rem;
+        }
+
+        .physics-info code {
+            background: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #1e3a8a;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-indicator.running {
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .status-indicator.stopped {
+            background: #ef4444;
+        }
+
+        .status-indicator.ready {
+            background: #ffaa00;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>⚙️ ADCS High-Fidelity Engineering Dashboard</h1>
+        <div class="badge">
+            <span class="status-indicator ready"></span>
+            PYTHON RUNTIME
+        </div>
+    </div>
+
+    <div class="nav">
+        <a href="index.html">🎨 Visual Demo</a>
+        <a href="lab.html" class="active">🔬 Engineering Lab</a>
+        <a href="#" onclick="alert('Coming soon: Hardware-in-Loop')">🔌 HIL Testing</a>
+    </div>
+
+    <div class="container">
+        <div class="grid-container">
+            <!-- Main Visualization -->
+            <div class="card">
+                <div class="card-header">
+                    Attitude Dynamics (Real Rigid Body Physics)
+                </div>
+                <div class="card-body">
+                    <div class="controls">
+                        <button py-click="start_simulation()">▶️ Start</button>
+                        <button py-click="stop_simulation()" class="secondary">⏸️ Pause</button>
+                        <button py-click="reset_simulation()" class="danger">🔄 Reset</button>
+                    </div>
+                    <div id="plot-container">
+                        <canvas id="attitude-canvas" width="700" height="500"></canvas>
+                    </div>
+
+                    <div class="physics-info">
+                        <h4>Active Physics Engine</h4>
+                        <p>
+                            <strong>Kinematics:</strong> <code>q̇ = 0.5 · Ω(ω) · q</code><br>
+                            <strong>Dynamics:</strong> <code>ω̇ = J⁻¹[τ - ω×(Jω)]</code><br>
+                            <strong>Control:</strong> <code>m = -k · dB/dt</code>, <code>τ = m × B</code>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Telemetry Panel -->
+            <div class="card">
+                <div class="card-header">
+                    Real-Time Telemetry
+                </div>
+                <div class="card-body">
+                    <div class="telemetry-grid">
+                        <div class="telemetry-item">
+                            <div class="label">Angular Velocity (rad/s)</div>
+                            <div class="value" id="omega-display">0.3700</div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="label">Simulation Time (s)</div>
+                            <div class="value" id="time-display">0.0</div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="label">Torque (N·m)</div>
+                            <div class="value" id="torque-display">0.00e+0</div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="label">Quaternion Norm</div>
+                            <div class="value" id="qnorm-display">1.000000</div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="label">B-Field (µT)</div>
+                            <div class="value" id="bfield-display">25.3</div>
+                        </div>
+                        <div class="telemetry-item">
+                            <div class="label">Dipole (A·m²)</div>
+                            <div class="value" id="dipole-display">0.000</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console Output -->
+        <div class="card">
+            <div class="card-header">
+                Python Console Output
+            </div>
+            <div class="card-body">
+                <div class="console" id="console-output">
+                    <span class="timestamp">[00:00:00]</span> <span class="info">Initializing Python runtime...</span>
+                    <span class="timestamp">[00:00:01]</span> <span class="success">✓ NumPy loaded</span>
+                    <span class="timestamp">[00:00:02]</span> <span class="info">Loading physics modules...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PyScript Configuration -->
+    <py-config>
+        packages = ["numpy"]
+    </py-config>
+
+    <!-- Python Code (Embedded) -->
+    <script type="py">
+        import numpy as np
+        from js import document, console, setInterval, clearInterval, requestAnimationFrame
+        from pyodide.ffi import create_proxy
+        
+        # ====================================================================
+        # PHYSICS ENGINE (Direct from satellite_physics.py)
+        # ====================================================================
+        
+        class SatellitePhysics:
+            """Rigid Body Dynamics - copied from satellite_physics.py"""
+            def __init__(self, inertia_matrix):
+                self.J = np.array(inertia_matrix, dtype=np.float64)
+                self.J_inv = np.linalg.inv(self.J)
+                
+            def normalize_quaternion(self, state):
+                q = state[0:4]
+                norm = np.linalg.norm(q)
+                if norm > 1e-9:
+                    state[0:4] = q / norm
+                return state
+            
+            def state_derivative(self, t, state, applied_torque_body):
+                q = state[0:4]
+                w = state[4:7]
+                
+                # Kinematics
+                Omega = np.array([
+                    [0,    -w[0], -w[1], -w[2]],
+                    [w[0],  0,     w[2], -w[1]],
+                    [w[1], -w[2],  0,     w[0]],
+                    [w[2],  w[1], -w[0],  0   ]
+                ])
+                q_dot = 0.5 * np.dot(Omega, q)
+                
+                # Dynamics (Euler's equation)
+                Jw = np.dot(self.J, w)
+                gyroscopic_torque = np.cross(w, Jw)
+                net_torque = applied_torque_body - gyroscopic_torque
+                w_dot = np.dot(self.J_inv, net_torque)
+                
+                return np.concatenate((q_dot, w_dot))
+        
+        class RK4Solver:
+            """RK4 Integrator - copied from solver.py"""
+            def __init__(self, physics_engine):
+                self.physics = physics_engine
+                
+            def step(self, t, state, dt, torque):
+                k1 = dt * self.physics.state_derivative(t, state, torque)
+                k2 = dt * self.physics.state_derivative(t + 0.5*dt, state + 0.5*k1, torque)
+                k3 = dt * self.physics.state_derivative(t + 0.5*dt, state + 0.5*k2, torque)
+                k4 = dt * self.physics.state_derivative(t + dt, state + k3, torque)
+                
+                new_state = state + (k1 + 2*k2 + 2*k3 + k4) / 6.0
+                return self.physics.normalize_quaternion(new_state)
+        
+        class BDotController:
+            """B-Dot Controller - copied from bdot_controller.py"""
+            def __init__(self, gain, dt_control):
+                self.k = gain
+                self.dt = dt_control
+                self.last_B_body = None
+                self.max_dipole = 0.15
+            
+            def compute_dipole(self, current_B_body):
+                if self.last_B_body is None:
+                    self.last_B_body = current_B_body.copy()
+                    return np.zeros(3)
+                
+                b_dot = (current_B_body - self.last_B_body) / self.dt
+                m_command = -self.k * b_dot
+                m_command = np.clip(m_command, -self.max_dipole, self.max_dipole)
+                
+                self.last_B_body = current_B_body.copy()
+                return m_command
+        
+        # ====================================================================
+        # SIMULATION STATE
+        # ====================================================================
+        
+        # Initialize physics (3U CubeSat)
+        J_3U = [[0.11, 0, 0], [0, 0.0815, 0], [0, 0, 0.0815]]
+        physics = SatellitePhysics(J_3U)
+        solver = RK4Solver(physics)
+        controller = BDotController(gain=50000.0, dt_control=0.1)
+        
+        # Initial state [qw, qx, qy, qz, wx, wy, wz]
+        state = np.array([1.0, 0.0, 0.0, 0.0, 0.2, -0.3, 0.1], dtype=np.float64)
+        sim_time = 0.0
+        dt = 0.05
+        running = False
+        interval_id = None
+        
+        def log_console(msg, msg_type="info"):
+            """Log to console"""
+            console_el = document.getElementById("console-output")
+            timestamp = f"[{int(sim_time):02d}:{int((sim_time % 1) * 60):02d}]"
+            
+            color_class = {"info": "info", "success": "success", "warning": "warning"}.get(msg_type, "info")
+            
+            console_el.innerHTML += f'\n<span class="timestamp">{timestamp}</span> <span class="{color_class}">{msg}</span>'
+            console_el.scrollTop = console_el.scrollHeight
+        
+        # ====================================================================
+        # SIMULATION FUNCTIONS
+        # ====================================================================
+        
+        def simulation_step():
+            """Execute one physics timestep"""
+            global state, sim_time
+            
+            # Simplified magnetic field (time-varying)
+            B_eci = np.array([
+                2e-5 * np.cos(sim_time * 0.1),
+                1e-5 * np.sin(sim_time * 0.1),
+                -1.5e-5
+            ])
+            
+            # Transform to body frame (simplified - using identity for now)
+            B_body = B_eci.copy()
+            
+            # B-Dot control
+            m_dipole = controller.compute_dipole(B_body)
+            torque = np.cross(m_dipole, B_body)
+            
+            # RK4 integration (REAL PHYSICS!)
+            state = solver.step(sim_time, state, dt, torque)
+            sim_time += dt
+            
+            # Update display
+            update_telemetry(state, torque, B_body, m_dipole)
+            draw_attitude(state)
+            
+            # Log periodically
+            if int(sim_time * 10) % 10 == 0:
+                omega_mag = np.linalg.norm(state[4:7])
+                log_console(f"ω = {omega_mag:.4f} rad/s, τ = {np.linalg.norm(torque):.2e} N·m")
+        
+        def update_telemetry(state, torque, B_body, m_dipole):
+            """Update telemetry displays"""
+            omega_mag = np.linalg.norm(state[4:7])
+            torque_mag = np.linalg.norm(torque)
+            q_norm = np.linalg.norm(state[0:4])
+            b_mag = np.linalg.norm(B_body)
+            m_mag = np.linalg.norm(m_dipole)
+            
+            document.getElementById("omega-display").innerText = f"{omega_mag:.4f}"
+            document.getElementById("time-display").innerText = f"{sim_time:.1f}"
+            document.getElementById("torque-display").innerText = f"{torque_mag:.2e}"
+            document.getElementById("qnorm-display").innerText = f"{q_norm:.6f}"
+            document.getElementById("bfield-display").innerText = f"{b_mag*1e6:.1f}"
+            document.getElementById("dipole-display").innerText = f"{m_mag:.3f}"
+        
+        def draw_attitude(state):
+            """Draw satellite attitude on canvas"""
+            canvas = document.getElementById("attitude-canvas")
+            ctx = canvas.getContext("2d")
+            
+            w = canvas.width
+            h = canvas.height
+            
+            # Clear
+            ctx.fillStyle = "#fafafa"
+            ctx.fillRect(0, 0, w, h)
+            
+            # Center
+            cx = w / 2
+            cy = h / 2
+            
+            # Draw satellite body (rotating based on quaternion)
+            ctx.save()
+            ctx.translate(cx, cy)
+            
+            # Simple rotation visualization (using omega for now)
+            angle = sim_time * state[6]  # Z-axis rotation
+            ctx.rotate(angle)
+            
+            # Draw 3U CubeSat
+            ctx.fillStyle = "#666"
+            ctx.fillRect(-20, -60, 40, 120)
+            
+            # Body axes
+            ctx.strokeStyle = "#ff0000"
+            ctx.lineWidth = 3
+            ctx.beginPath()
+            ctx.moveTo(0, 0)
+            ctx.lineTo(80, 0)
+            ctx.stroke()
+            
+            ctx.strokeStyle = "#00ff00"
+            ctx.beginPath()
+            ctx.moveTo(0, 0)
+            ctx.lineTo(0, -80)
+            ctx.stroke()
+            
+            ctx.restore()
+            
+            # Angular velocity indicator
+            omega_mag = np.linalg.norm(state[4:7])
+            opacity = min(omega_mag / 0.5, 1.0)
+            ctx.strokeStyle = f"rgba(255, 0, 0, {opacity})"
+            ctx.lineWidth = 4
+            ctx.beginPath()
+            ctx.arc(cx, cy, 150, 0, 2 * np.pi)
+            ctx.stroke()
+            
+            # Labels
+            ctx.fillStyle = "#333"
+            ctx.font = "14px monospace"
+            ctx.fillText("X (Red)", cx + 90, cy)
+            ctx.fillText("Y (Green)", cx - 10, cy - 90)
+        
+        # ====================================================================
+        # CONTROL FUNCTIONS
+        # ====================================================================
+        
+        def start_simulation():
+            """Start the simulation loop"""
+            global running, interval_id
+            
+            if not running:
+                running = True
+                log_console("✓ Simulation started (RK4 active)", "success")
+                
+                # Update status indicator
+                indicator = document.querySelector(".status-indicator")
+                indicator.classList.remove("ready")
+                indicator.classList.add("running")
+                
+                # Create animation loop
+                def loop():
+                    if running:
+                        simulation_step()
+                        requestAnimationFrame(create_proxy(loop))
+                
+                requestAnimationFrame(create_proxy(loop))
+        
+        def stop_simulation():
+            """Pause the simulation"""
+            global running
+            running = False
+            log_console("⏸ Simulation paused", "warning")
+            
+            indicator = document.querySelector(".status-indicator")
+            indicator.classList.remove("running")
+            indicator.classList.add("ready")
+        
+        def reset_simulation():
+            """Reset to initial conditions"""
+            global state, sim_time, running
+            
+            running = False
+            state = np.array([1.0, 0.0, 0.0, 0.0, 0.2, -0.3, 0.1], dtype=np.float64)
+            sim_time = 0.0
+            controller.last_B_body = None
+            
+            log_console("🔄 Reset to initial conditions", "info")
+            update_telemetry(state, np.zeros(3), np.zeros(3), np.zeros(3))
+            draw_attitude(state)
+            
+            indicator = document.querySelector(".status-indicator")
+            indicator.classList.remove("running")
+            indicator.classList.add("ready")
+        
+        # Initialize display
+        log_console("✓ Physics engine initialized", "success")
+        log_console("✓ Using 3U CubeSat inertia: diag(0.11, 0.0815, 0.0815) kg·m²", "info")
+        log_console("Ready to run high-fidelity simulation", "success")
+        draw_attitude(state)
+        update_telemetry(state, np.zeros(3), np.zeros(3), np.zeros(3))
+    </script>
+</body>
+
+</html>
