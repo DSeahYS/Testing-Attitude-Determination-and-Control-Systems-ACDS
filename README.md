@@ -3,6 +3,7 @@
 A comprehensive Python-based simulator for Attitude Determination and Control System (ADCS) of CubeSats, featuring multiple simulation interfaces and high-fidelity physics models.
 
 ![ADCS Simulator](https://github.com/user-attachments/assets/a8ce415d-a6c2-4e7b-9181-92be3d825e75)
+<img width="896" height="1251" alt="image" src="https://github.com/user-attachments/assets/893260be-d02f-4f27-bae8-5f185ace8607" />
 
 ## Features
 
