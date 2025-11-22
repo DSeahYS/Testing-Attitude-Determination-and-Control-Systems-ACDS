@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Fidelity 6DOF CubeSat ADCS - Interactive Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 2px solid #00d4ff;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #aaa;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .viz-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #00d4ff;
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #00d4ff;
+        }
+
+        canvas {
+            width: 100%;
+            height: 400px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.5);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-box {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .stat-box .label {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-box .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-panel {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #00d4ff;
+            margin-top: 1rem;
+        }
+
+        .info-panel h3 {
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-panel p {
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .math-display {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            color: #00ff88;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .running {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🛰️ High-Fidelity 6DOF CubeSat ADCS</h1>
+        <p>Interactive Demonstration of Tilted Dipole Magnetic Field & B-Dot Control</p>
+    </div>
+
+    <div class="container">
+        <!-- Magnetic Field Visualization -->
+        <div class="viz-grid">
+            <div class="card">
+                <h2>📡 Tilted Dipole Magnetic Field (11.5°)</h2>
+                <canvas id="magneticFieldCanvas"></canvas>
+                <div class="controls">
+                    <button onclick="toggleFieldAnimation()">▶️ Animate Earth Rotation</button>
+                    <button onclick="resetField()">🔄 Reset</button>
+                </div>
+                <div class="info-panel">
+                    <h3>Why the Tilt Matters</h3>
+                    <p>The 11.5° tilt creates a time-varying magnetic field as Earth rotates. Without it, an equatorial
+                        satellite would see constant B, making dB/dt = 0 and causing B-Dot control to fail.</p>
+                    <div class="math-display">B(r,t) = (μₑ / r⁵) × [3(m·r)r - r²m]<br>m(t) rotates at ω = 7.292×10⁻⁵
+                        rad/s</div>
+                </div>
+            </div>
+
+            <!-- Satellite Detumbling Simulation -->
+            <div class="card">
+                <h2>🔄 B-Dot Detumbling Simulation</h2>
+                <canvas id="detumblingCanvas"></canvas>
+                <div class="controls">
+                    <button onclick="startDetumbling()">▶️ Start Detumbling</button>
+                    <button onclick="stopDetumbling()">⏸️ Pause</button>
+                    <button onclick="resetDetumbling()">🔄 Reset</button>
+                </div>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="label">Angular Velocity</div>
+                        <div class="value" id="omegaValue">0.370</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="label">Time (s)</div>
+                        <div class="value" id="timeValue">0.0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="label">Torque (N·m)</div>
+                        <div class="value" id="torqueValue">0.00e+0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="label">Energy Dissipated</div>
+                        <div class="value" id="energyValue">0%</div>
+                    </div>
+                </div>
+                <div class="info-panel">
+                    <h3>B-Dot Control Law</h3>
+                    <p>The controller computes magnetic dipole moment to oppose rotation:</p>
+                    <div class="math-display">m = -k · dB/dt<br>τ = m × B (always dissipative)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orbital Mechanics -->
+        <div class="card">
+            <h2>🌍 SGP4 Orbital Propagation</h2>
+            <canvas id="orbitCanvas"></canvas>
+            <div class="controls">
+                <button onclick="startOrbit()">▶️ Start Orbit</button>
+                <button onclick="stopOrbit()">⏸️ Pause</button>
+            </div>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="label">Altitude (km)</div>
+                    <div class="value" id="altitudeValue">400</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Orbital Period (min)</div>
+                    <div class="value" id="periodValue">92.7</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Velocity (km/s)</div>
+                    <div class="value" id="velocityValue">7.67</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Inclination (°)</div>
+                    <div class="value" id="inclinationValue">51.6</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====================================================================
+        // MAGNETIC FIELD VISUALIZATION
+        // ====================================================================
+
+        const magCanvas = document.getElementById('magneticFieldCanvas');
+        const magCtx = magCanvas.getContext('2d');
+        let fieldAnimating = false;
+        let earthRotation = 0;
+        const TILT_DEG = 11.5;
+        const TILT_RAD = TILT_DEG * Math.PI / 180;
+
+        function drawMagneticField() {
+            const w = magCanvas.width = magCanvas.offsetWidth;
+            const h = magCanvas.height = magCanvas.offsetHeight;
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const earthRadius = 60;
+            const scale = 0.015;
+
+            magCtx.fillStyle = '#000';
+            magCtx.fillRect(0, 0, w, h);
+
+            // Draw field lines
+            magCtx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
+            magCtx.lineWidth = 1.5;
+
+            for (let angle = 0; angle < 360; angle += 30) {
+                const rad = angle * Math.PI / 180;
+                drawFieldLine(centerX, centerY, earthRadius, rad, scale);
+            }
+
+            // Draw Earth
+            const gradient = magCtx.createRadialGradient(centerX, centerY, 0, centerX, centerY, earthRadius);
+            gradient.addColorStop(0, '#4ecdc4');
+            gradient.addColorStop(1, '#1e3a8a');
+            magCtx.fillStyle = gradient;
+            magCtx.beginPath();
+            magCtx.arc(centerX, centerY, earthRadius, 0, 2 * Math.PI);
+            magCtx.fill();
+
+            // Draw dipole axis (tilted and rotating)
+            magCtx.strokeStyle = '#ff6b6b';
+            magCtx.lineWidth = 3;
+            magCtx.beginPath();
+            const dipoleLength = 100;
+            const mx = Math.sin(TILT_RAD) * Math.cos(earthRotation);
+            const mz = Math.cos(TILT_RAD);
+            magCtx.moveTo(centerX - mx * dipoleLength, centerY - mz * dipoleLength);
+            magCtx.lineTo(centerX + mx * dipoleLength, centerY + mz * dipoleLength);
+            magCtx.stroke();
+
+            // Draw geographic north (rotation axis)
+            magCtx.strokeStyle = '#00ff88';
+            magCtx.lineWidth = 2;
+            magCtx.setLineDash([5, 5]);
+            magCtx.beginPath();
+            magCtx.moveTo(centerX, centerY + dipoleLength);
+            magCtx.lineTo(centerX, centerY - dipoleLength);
+            magCtx.stroke();
+            magCtx.setLineDash([]);
+
+            // Labels
+            magCtx.fillStyle = '#ff6b6b';
+            magCtx.font = 'bold 14px monospace';
+            magCtx.fillText('Magnetic Axis (11.5° tilt)', 10, 30);
+
+            magCtx.fillStyle = '#00ff88';
+            magCtx.fillText('Geographic North', 10, 50);
+
+            // Sample orbit
+            magCtx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+            magCtx.lineWidth = 2;
+            magCtx.beginPath();
+            const orbitRadius = earthRadius + 40;
+            magCtx.arc(centerX, centerY, orbitRadius, 0, 2 * Math.PI);
+            magCtx.stroke();
+        }
+
+        function drawFieldLine(cx, cy, earthR, startAngle, scale) {
+            magCtx.beginPath();
+            let r = earthR * 1.1;
+            const maxR = Math.min(magCanvas.width, magCanvas.height) * 0.45;
+
+            for (let i = 0; i < 100; i++) {
+                const x = r * Math.cos(startAngle);
+                const y = r * Math.sin(startAngle);
+
+                // Simplified dipole field
+                const mx = Math.sin(TILT_RAD) * Math.cos(earthRotation);
+                const mz = Math.cos(TILT_RAD);
+                const dot = (mx * x + mz * y);
+                const Bx = (3 * dot * x - r * r * mx) / (r * r * r);
+                const By = (3 * dot * y - r * r * mz) / (r * r * r);
+
+                const screenX = cx + x;
+                const screenY = cy + y;
+
+                if (i === 0) {
+                    magCtx.moveTo(screenX, screenY);
+                } else {
+                    magCtx.lineTo(screenX, screenY);
+                }
+
+                // Step along field
+                const step = 2;
+                const mag = Math.sqrt(Bx * Bx + By * By);
+                if (mag > 0) {
+                    r += step;
+                    startAngle = Math.atan2(y + By * step / mag, x + Bx * step / mag);
+                }
+
+                if (r > maxR || r < earthR) break;
+            }
+            magCtx.stroke();
+        }
+
+        function toggleFieldAnimation() {
+            fieldAnimating = !fieldAnimating;
+            if (fieldAnimating) {
+                animateField();
+            }
+        }
+
+        function animateField() {
+            if (!fieldAnimating) return;
+            earthRotation += 0.02;
+            drawMagneticField();
+            requestAnimationFrame(animateField);
+        }
+
+        function resetField() {
+            fieldAnimating = false;
+            earthRotation = 0;
+            drawMagneticField();
+        }
+
+        // ====================================================================
+        // DETUMBLING SIMULATION
+        // ====================================================================
+
+        const detumbCanvas = document.getElementById('detumblingCanvas');
+        const detumbCtx = detumbCanvas.getContext('2d');
+        let detumbRunning = false;
+        let omega = [0.2, -0.3, 0.1];
+        let simTime = 0;
+        const dt = 0.05;
+        const gain = 50000;
+        let lastB = null;
+
+        function drawDetumbling() {
+            const w = detumbCanvas.width = detumbCanvas.offsetWidth;
+            const h = detumbCanvas.height = detumbCanvas.offsetHeight;
+
+            detumbCtx.fillStyle = '#000';
+            detumbCtx.fillRect(0, 0, w, h);
+
+            const centerX = w / 2;
+            const centerY = h / 2;
+
+            // Draw satellite (spinning)
+            detumbCtx.save();
+            detumbCtx.translate(centerX, centerY);
+            detumbCtx.rotate(simTime * omega[2]);
+
+            // Satellite body (3U CubeSat)
+            detumbCtx.fillStyle = '#ccc';
+            detumbCtx.fillRect(-15, -45, 30, 90);
+
+            // Body axes
+            detumbCtx.strokeStyle = '#ff0000';
+            detumbCtx.lineWidth = 3;
+            detumbCtx.beginPath();
+            detumbCtx.moveTo(0, 0);
+            detumbCtx.lineTo(60, 0);
+            detumbCtx.stroke();
+
+            detumbCtx.strokeStyle = '#00ff00';
+            detumbCtx.beginPath();
+            detumbCtx.moveTo(0, 0);
+            detumbCtx.lineTo(0, -60);
+            detumbCtx.stroke();
+
+            detumbCtx.restore();
+
+            // Angular velocity indicator
+            const omegaMag = Math.sqrt(omega[0] ** 2 + omega[1] ** 2 + omega[2] ** 2);
+            const radius = 150;
+            detumbCtx.strokeStyle = `rgba(255, 107, 107, ${Math.min(omegaMag, 1)})`;
+            detumbCtx.lineWidth = 4;
+            detumbCtx.beginPath();
+            detumbCtx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            detumbCtx.stroke();
+
+            // Labels
+            detumbCtx.fillStyle = '#fff';
+            detumbCtx.font = 'bold 16px monospace';
+            detumbCtx.fillText('X', centerX + 70, centerY + 5);
+            detumbCtx.fillStyle = '#00ff00';
+            detumbCtx.fillText('Y', centerX - 5, centerY - 70);
+        }
+
+        function simulateDetumbling() {
+            if (!detumbRunning) return;
+
+            // Simplified magnetic field (time-varying)
+            const B = [
+                2e-5 * Math.cos(simTime * 0.1),
+                1e-5 * Math.sin(simTime * 0.1),
+                -1.5e-5
+            ];
+
+            let torque = [0, 0, 0];
+
+            if (lastB) {
+                // B-Dot control
+                const Bdot = [
+                    (B[0] - lastB[0]) / dt,
+                    (B[1] - lastB[1]) / dt,
+                    (B[2] - lastB[2]) / dt
+                ];
+
+                const m = [-gain * Bdot[0], -gain * Bdot[1], -gain * Bdot[2]];
+
+                // Clamp magnitude
+                const mMag = Math.sqrt(m[0] ** 2 + m[1] ** 2 + m[2] ** 2);
+                if (mMag > 0.15) {
+                    m[0] *= 0.15 / mMag;
+                    m[1] *= 0.15 / mMag;
+                    m[2] *= 0.15 / mMag;
+                }
+
+                // Torque = m × B
+                torque = [
+                    m[1] * B[2] - m[2] * B[1],
+                    m[2] * B[0] - m[0] * B[2],
+                    m[0] * B[1] - m[1] * B[0]
+                ];
+            }
+
+            lastB = [...B];
+
+            // Simple Euler integration for omega
+            const J = [0.11, 0.0815, 0.0815];
+            omega[0] += (torque[0] / J[0]) * dt;
+            omega[1] += (torque[1] / J[1]) * dt;
+            omega[2] += (torque[2] / J[2]) * dt;
+
+            // Add damping
+            omega[0] *= 0.9995;
+            omega[1] *= 0.9995;
+            omega[2] *= 0.9995;
+
+            simTime += dt;
+
+            // Update display
+            const omegaMag = Math.sqrt(omega[0] ** 2 + omega[1] ** 2 + omega[2] ** 2);
+            const torqueMag = Math.sqrt(torque[0] ** 2 + torque[1] ** 2 + torque[2] ** 2);
+            const energyLoss = (1 - omegaMag / 0.37) * 100;
+
+            document.getElementById('omegaValue').textContent = omegaMag.toFixed(3);
+            document.getElementById('timeValue').textContent = simTime.toFixed(1);
+            document.getElementById('torqueValue').textContent = torqueMag.toExponential(2);
+            document.getElementById('energyValue').textContent = Math.max(0, energyLoss).toFixed(1) + '%';
+
+            drawDetumbling();
+            requestAnimationFrame(simulateDetumbling);
+        }
+
+        function startDetumbling() {
+            detumbRunning = true;
+            simulateDetumbling();
+        }
+
+        function stopDetumbling() {
+            detumbRunning = false;
+        }
+
+        function resetDetumbling() {
+            detumbRunning = false;
+            omega = [0.2, -0.3, 0.1];
+            simTime = 0;
+            lastB = null;
+            drawDetumbling();
+            document.getElementById('omegaValue').textContent = '0.370';
+            document.getElementById('timeValue').textContent = '0.0';
+            document.getElementById('torqueValue').textContent = '0.00e+0';
+            document.getElementById('energyValue').textContent = '0%';
+        }
+
+        // ====================================================================
+        // ORBITAL SIMULATION
+        // ====================================================================
+
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const orbitCtx = orbitCanvas.getContext('2d');
+        let orbitRunning = false;
+        let orbitAngle = 0;
+
+        function drawOrbit() {
+            const w = orbitCanvas.width = orbitCanvas.offsetWidth;
+            const h = orbitCanvas.height = orbitCanvas.offsetHeight;
+
+            orbitCtx.fillStyle = '#000';
+            orbitCtx.fillRect(0, 0, w, h);
+
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const earthRadius = 80;
+            const orbitRadius = 160;
+
+            // Draw Earth
+            const gradient = orbitCtx.createRadialGradient(centerX, centerY, 0, centerX, centerY, earthRadius);
+            gradient.addColorStop(0, '#4ecdc4');
+            gradient.addColorStop(0.7, '#1e3a8a');
+            gradient.addColorStop(1, '#0f172a');
+            orbitCtx.fillStyle = gradient;
+            orbitCtx.beginPath();
+            orbitCtx.arc(centerX, centerY, earthRadius, 0, 2 * Math.PI);
+            orbitCtx.fill();
+
+            // Draw orbit path
+            orbitCtx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
+            orbitCtx.lineWidth = 2;
+            orbitCtx.beginPath();
+            orbitCtx.arc(centerX, centerY, orbitRadius, 0, 2 * Math.PI);
+            orbitCtx.stroke();
+
+            // Draw satellite
+            const satX = centerX + orbitRadius * Math.cos(orbitAngle);
+            const satY = centerY + orbitRadius * Math.sin(orbitAngle);
+
+            orbitCtx.fillStyle = '#00ff88';
+            orbitCtx.beginPath();
+            orbitCtx.arc(satX, satY, 8, 0, 2 * Math.PI);
+            orbitCtx.fill();
+
+            // Velocity vector
+            orbitCtx.strokeStyle = '#ff6b6b';
+            orbitCtx.lineWidth = 2;
+            orbitCtx.beginPath();
+            orbitCtx.moveTo(satX, satY);
+            orbitCtx.lineTo(
+                satX - 30 * Math.sin(orbitAngle),
+                satY + 30 * Math.cos(orbitAngle)
+            );
+            orbitCtx.stroke();
+        }
+
+        function animateOrbit() {
+            if (!orbitRunning) return;
+            orbitAngle += 0.02;
+            drawOrbit();
+            requestAnimationFrame(animateOrbit);
+        }
+
+        function startOrbit() {
+            orbitRunning = true;
+            animateOrbit();
+        }
+
+        function stopOrbit() {
+            orbitRunning = false;
+        }
+
+        // Initialize all canvases
+        drawMagneticField();
+        drawDetumbling();
+        drawOrbit();
+    </script>
+</body>
+
+</html>
