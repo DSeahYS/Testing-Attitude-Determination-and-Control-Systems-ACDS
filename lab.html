@@ -4,12 +4,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADCS High-Fidelity Engineering Dashboard</title>
-    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
-    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <title>ADCS Mission Control - Simple Demo</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
+        :root {
+            --bg-color: #0b0c10;
+            --panel-bg: #1f2833;
+            --text-color: #c5c6c7;
+            --accent-cyan: #66fcf1;
+            --accent-dark: #45a29e;
+            --alert-red: #fc4445;
+            --success-green: #00ff88;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -17,816 +26,407 @@
         }
 
         body {
-            font-family: 'Roboto Mono', 'Courier New', monospace;
-            background: #f5f5f5;
-            color: #333;
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .header {
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-            color: white;
-            padding: 1.5rem 2rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            background: var(--panel-bg);
+            border-bottom: 2px solid var(--accent-dark);
+            padding: 0.5rem 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            height: 60px;
         }
 
         .header h1 {
-            font-size: 1.8rem;
-            font-weight: 300;
+            font-size: 1.5rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
-        .header .badge {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+        .status-badge {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--accent-dark);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--success-green);
         }
 
-        .nav {
-            background: white;
-            padding: 1rem 2rem;
-            border-bottom: 1px solid #ddd;
-            display: flex;
-            gap: 1rem;
-        }
-
-        .nav a {
-            text-decoration: none;
-            color: #666;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-
-        .nav a:hover {
-            background: #f0f0f0;
-            color: #1e3a8a;
-        }
-
-        .nav a.active {
-            background: #1e3a8a;
-            color: white;
-        }
-
-        .container {
-            max-width: 1800px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .grid-container {
+        .main-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: 1fr 400px;
+            grid-template-rows: 2fr 1fr;
+            gap: 10px;
+            padding: 10px;
+            height: calc(100vh - 60px);
         }
 
-        .card {
-            background: white;
-            border: 1px solid #ddd;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent-dark);
+            border-radius: 4px;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .card-header {
-            background: #f8f9fa;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #ddd;
-            font-weight: 600;
-            color: #1e3a8a;
+        .panel-header {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--accent-dark);
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
             display: flex;
             justify-content: space-between;
-            align-items: center;
         }
 
-        .card-header .badge {
-            background: #3b82f6;
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .card-body {
-            padding: 1.5rem;
-        }
-
-        .telemetry-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-
-        .telemetry-item {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 5px;
-            border-left: 3px solid #3b82f6;
-        }
-
-        .telemetry-item .label {
-            font-size: 0.85rem;
-            color: #666;
-            margin-bottom: 0.3rem;
-        }
-
-        .telemetry-item .value {
-            font-size: 1.4rem;
-            font-weight: bold;
-            color: #1e3a8a;
-            font-family: 'Courier New', monospace;
-        }
-
-        .controls {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        button {
-            padding: 0.7rem 1.5rem;
-            background: #3b82f6;
-            border: none;
-            border-radius: 5px;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-family: inherit;
-        }
-
-        button:hover {
-            background: #2563eb;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
-        button.secondary {
-            background: #64748b;
-        }
-
-        button.secondary:hover {
-            background: #475569;
-        }
-
-        button.danger {
-            background: #ef4444;
-        }
-
-        button.danger:hover {
-            background: #dc2626;
-        }
-
-        #plot-container {
-            width: 100%;
-            height: 500px;
-            background: #fafafa;
-            border-radius: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #999;
-        }
-
-        #attitude-canvas {
-            width: 100%;
-            height: 100%;
-            border-radius: 5px;
+        #viewport-3d {
+            grid-column: 1 / 2;
+            grid-row: 1 / 3;
+            position: relative;
         }
 
         #three-container {
             width: 100%;
-            height: 500px;
-            background: linear-gradient(135deg, #0f172a, #1e293b);
-            border-radius: 5px;
+            height: 100%;
+        }
+
+        #graphs-panel {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 5px;
+        }
+
+        .chart-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
             position: relative;
         }
 
-        .console {
-            background: #1e1e1e;
-            color: #00ff00;
-            padding: 1rem;
-            border-radius: 5px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            height: 200px;
-            overflow-y: auto;
-            line-height: 1.6;
+        #telemetry-panel {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            display: flex;
+            flex-direction: column;
         }
 
-        .console .timestamp {
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            padding: 10px;
+            flex: 1;
+        }
+
+        .telemetry-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px;
+            border-left: 2px solid var(--accent-cyan);
+        }
+
+        .telemetry-label {
+            font-size: 0.7rem;
             color: #888;
         }
 
-        .console .info {
-            color: #00d4ff;
+        .telemetry-value {
+            font-size: 1.1rem;
+            color: var(--success-green);
         }
 
-        .console .success {
-            color: #00ff88;
+        .controls {
+            padding: 10px;
+            border-top: 1px solid var(--accent-dark);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
         }
 
-        .console .warning {
-            color: #ffaa00;
+        button {
+            background: transparent;
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 5px 15px;
+            font-family: inherit;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
         }
 
-        .physics-info {
-            background: #f0f9ff;
-            border: 1px solid #bae6fd;
-            border-radius: 5px;
-            padding: 1rem;
-            margin-top: 1rem;
+        button:hover {
+            background: var(--accent-cyan);
+            color: #000;
+            box-shadow: 0 0 10px var(--accent-cyan);
         }
 
-        .physics-info h4 {
-            color: #0369a1;
-            margin-bottom: 0.5rem;
+        button.danger {
+            border-color: var(--alert-red);
+            color: var(--alert-red);
         }
 
-        .physics-info code {
-            background: white;
-            padding: 0.2rem 0.5rem;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            color: #1e3a8a;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-        }
-
-        .status-indicator.running {
-            background: #00ff88;
-            box-shadow: 0 0 10px #00ff88;
-        }
-
-        .status-indicator.stopped {
-            background: #ef4444;
-        }
-
-        .status-indicator.ready {
-            background: #ffaa00;
-        }
-
-        .view-label {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            font-size: 0.85rem;
-            font-weight: 600;
+        button.danger:hover {
+            background: var(--alert-red);
+            color: #fff;
         }
     </style>
 </head>
 
 <body>
     <div class="header">
-        <h1>⚙️ ADCS High-Fidelity Engineering Dashboard</h1>
-        <div class="badge">
-            <span class="status-indicator ready"></span>
-            PYTHON RUNTIME
-        </div>
+        <h1>ADCS Mission Control (JavaScript Demo)</h1>
+        <div class="status-badge">SYSTEM: ONLINE</div>
     </div>
 
-    <div class="nav">
-        <a href="index.html">🎨 Visual Demo</a>
-        <a href="lab.html" class="active">🔬 Engineering Lab</a>
-        <a href="#" onclick="alert('Coming soon: Hardware-in-Loop')">🔌 HIL Testing</a>
-    </div>
-
-    <div class="container">
-        <div class="grid-container">
-            <!-- 2D Visualization -->
-            <div class="card">
-                <div class="card-header">
-                    2D Attitude Visualization
-                    <span class="badge">Canvas 2D</span>
-                </div>
-                <div class="card-body">
-                    <div class="controls">
-                        <button py-click="start_simulation()">▶️ Start</button>
-                        <button py-click="stop_simulation()" class="secondary">⏸️ Pause</button>
-                        <button py-click="reset_simulation()" class="danger">🔄 Reset</button>
-                    </div>
-                    <div id="plot-container">
-                        <canvas id="attitude-canvas" width="700" height="500"></canvas>
-                    </div>
-
-                    <div class="physics-info">
-                        <h4>Active Physics Engine</h4>
-                        <p>
-                            <strong>Kinematics:</strong> <code>q̇ = 0.5 · Ω(ω) · q</code><br>
-                            <strong>Dynamics:</strong> <code>ω̇ = J⁻¹[τ - ω×(Jω)]</code><br>
-                            <strong>Control:</strong> <code>m = -k · dB/dt</code>, <code>τ = m × B</code>
-                        </p>
-                    </div>
-                </div>
+    <div class="main-grid">
+        <div class="panel" id="viewport-3d">
+            <div class="panel-header">
+                <span>Real-Time Attitude Visualization</span>
+                <span>CAM: ORBITAL</span>
             </div>
+            <div id="three-container"></div>
+        </div>
 
-            <!-- 3D Visualization -->
-            <div class="card">
-                <div class="card-header">
-                    3D Satellite Model
-                    <span class="badge">Three.js</span>
-                </div>
-                <div class="card-body">
-                    <div id="three-container">
-                        <div class="view-label">3D Real-time Attitude</div>
-                    </div>
-                    <div class="physics-info" style="margin-top: 1rem;">
-                        <h4>3D Visualization Features</h4>
-                        <p>
-                            <strong>Body Axes:</strong> Red (X), Green (Y), Blue (Z)<br>
-                            <strong>Rotation:</strong> Real-time quaternion-based<br>
-                            <strong>Model:</strong> 3U CubeSat (10×10×30 cm)
-                        </p>
-                    </div>
-                </div>
+        <div class="panel" id="graphs-panel">
+            <div class="panel-header">Telemetry Plots</div>
+            <div class="chart-container">
+                <canvas id="omegaChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="torqueChart"></canvas>
             </div>
         </div>
 
-        <!-- Telemetry Panel -->
-        <div class="grid-container">
-            <div class="card">
-                <div class="card-header">
-                    Real-Time Telemetry
+        <div class="panel" id="telemetry-panel">
+            <div class="panel-header">System Status</div>
+            <div class="telemetry-grid">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">ANGULAR VELOCITY (rad/s)</div>
+                    <div class="telemetry-value" id="omega-val">0.0000</div>
                 </div>
-                <div class="card-body">
-                    <div class="telemetry-grid">
-                        <div class="telemetry-item">
-                            <div class="label">Angular Velocity (rad/s)</div>
-                            <div class="value" id="omega-display">0.3700</div>
-                        </div>
-                        <div class="telemetry-item">
-                            <div class="label">Simulation Time (s)</div>
-                            <div class="value" id="time-display">0.0</div>
-                        </div>
-                        <div class="telemetry-item">
-                            <div class="label">Torque (N·m)</div>
-                            <div class="value" id="torque-display">0.00e+0</div>
-                        </div>
-                        <div class="telemetry-item">
-                            <div class="label">Quaternion Norm</div>
-                            <div class="value" id="qnorm-display">1.000000</div>
-                        </div>
-                        <div class="telemetry-item">
-                            <div class="label">B-Field (µT)</div>
-                            <div class="value" id="bfield-display">25.3</div>
-                        </div>
-                        <div class="telemetry-item">
-                            <div class="label">Dipole (A·m²)</div>
-                            <div class="value" id="dipole-display">0.000</div>
-                        </div>
-                    </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">TORQUE (N·m)</div>
+                    <div class="telemetry-value" id="torque-val">0.00e+0</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">MAGNETIC FIELD (µT)</div>
+                    <div class="telemetry-value" id="b-val">0.0</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">DIPOLE MOMENT (Am²)</div>
+                    <div class="telemetry-value" id="m-val">0.000</div>
                 </div>
             </div>
-
-            <!-- Console Output -->
-            <div class="card">
-                <div class="card-header">
-                    Python Console Output
-                </div>
-                <div class="card-body">
-                    <div class="console" id="console-output">
-                        <span class="timestamp">[00:00:00]</span> <span class="info">Initializing Python
-                            runtime...</span>
-                        <span class="timestamp">[00:00:01]</span> <span class="success">✓ NumPy loaded</span>
-                        <span class="timestamp">[00:00:02]</span> <span class="info">Loading physics modules...</span>
-                    </div>
-                </div>
+            <div class="controls">
+                <button onclick="startSim()">Initialize</button>
+                <button onclick="stopSim()" class="danger">Abort</button>
+                <button onclick="resetSim()">Reset</button>
             </div>
         </div>
     </div>
 
-    <!-- PyScript Configuration -->
-    <py-config>
-        packages = ["numpy"]
-    </py-config>
-
-    <!-- Python Code (Embedded) -->
-    <script type="py">
-        import numpy as np
-        from js import document, console, setInterval, clearInterval, requestAnimationFrame, THREE
-        from pyodide.ffi import create_proxy
-        
-        # ====================================================================
-        # PHYSICS ENGINE (Direct from satellite_physics.py)
-        # ====================================================================
-        
-        class SatellitePhysics:
-            """Rigid Body Dynamics - copied from satellite_physics.py"""
-            def __init__(self, inertia_matrix):
-                self.J = np.array(inertia_matrix, dtype=np.float64)
-                self.J_inv = np.linalg.inv(self.J)
-                
-            def normalize_quaternion(self, state):
-                q = state[0:4]
-                norm = np.linalg.norm(q)
-                if norm > 1e-9:
-                    state[0:4] = q / norm
-                return state
-            
-            def state_derivative(self, t, state, applied_torque_body):
-                q = state[0:4]
-                w = state[4:7]
-                
-                # Kinematics
-                Omega = np.array([
-                    [0,    -w[0], -w[1], -w[2]],
-                    [w[0],  0,     w[2], -w[1]],
-                    [w[1], -w[2],  0,     w[0]],
-                    [w[2],  w[1], -w[0],  0   ]
-                ])
-                q_dot = 0.5 * np.dot(Omega, q)
-                
-                # Dynamics (Euler's equation)
-                Jw = np.dot(self.J, w)
-                gyroscopic_torque = np.cross(w, Jw)
-                net_torque = applied_torque_body - gyroscopic_torque
-                w_dot = np.dot(self.J_inv, net_torque)
-                
-                return np.concatenate((q_dot, w_dot))
-            
-            def quaternion_to_rotation_matrix(self, q):
-                qw, qx, qy, qz = q
-                R = np.array([
-                    [1 - 2*qy**2 - 2*qz**2, 2*qx*qy - 2*qw*qz, 2*qx*qz + 2*qw*qy],
-                    [2*qx*qy + 2*qw*qz, 1 - 2*qx**2 - 2*qz**2, 2*qy*qz - 2*qw*qx],
-                    [2*qx*qz - 2*qw*qy, 2*qy*qz + 2*qw*qx, 1 - 2*qx**2 - 2*qy**2]
-                ])
-                return R
-        
-        class RK4Solver:
-            """RK4 Integrator - copied from solver.py"""
-            def __init__(self, physics_engine):
-                self.physics = physics_engine
-                
-            def step(self, t, state, dt, torque):
-                k1 = dt * self.physics.state_derivative(t, state, torque)
-                k2 = dt * self.physics.state_derivative(t + 0.5*dt, state + 0.5*k1, torque)
-                k3 = dt * self.physics.state_derivative(t + 0.5*dt, state + 0.5*k2, torque)
-                k4 = dt * self.physics.state_derivative(t + dt, state + k3, torque)
-                
-                new_state = state + (k1 + 2*k2 + 2*k3 + k4) / 6.0
-                return self.physics.normalize_quaternion(new_state)
-        
-        class BDotController:
-            """B-Dot Controller - copied from bdot_controller.py"""
-            def __init__(self, gain, dt_control):
-                self.k = gain
-                self.dt = dt_control
-                self.last_B_body = None
-                self.max_dipole = 0.15
-            
-            def compute_dipole(self, current_B_body):
-                if self.last_B_body is None:
-                    self.last_B_body = current_B_body.copy()
-                    return np.zeros(3)
-                
-                b_dot = (current_B_body - self.last_B_body) / self.dt
-                m_command = -self.k * b_dot
-                m_command = np.clip(m_command, -self.max_dipole, self.max_dipole)
-                
-                self.last_B_body = current_B_body.copy()
-                return m_command
-        
-        # ====================================================================
-        # SIMULATION STATE
-        # ====================================================================
-        
-        # Initialize physics (3U CubeSat)
-        J_3U = [[0.11, 0, 0], [0, 0.0815, 0], [0, 0, 0.0815]]
-        physics = SatellitePhysics(J_3U)
-        solver = RK4Solver(physics)
-        controller = BDotController(gain=50000.0, dt_control=0.1)
-        
-        # Initial state [qw, qx, qy, qz, wx, wy, wz]
-        state = np.array([1.0, 0.0, 0.0, 0.0, 0.2, -0.3, 0.1], dtype=np.float64)
-        sim_time = 0.0
-        dt = 0.05
-        running = False
-        interval_id = None
-        
-        def log_console(msg, msg_type="info"):
-            """Log to console"""
-            console_el = document.getElementById("console-output")
-            timestamp = f"[{int(sim_time):02d}:{int((sim_time % 1) * 60):02d}]"
-            
-            color_class = {"info": "info", "success": "success", "warning": "warning"}.get(msg_type, "info")
-            
-            console_el.innerHTML += f'\n<span class="timestamp">{timestamp}</span> <span class="{color_class}">{msg}</span>'
-            console_el.scrollTop = console_el.scrollHeight
-        
-        # ====================================================================
-        # SIMULATION FUNCTIONS
-        # ====================================================================
-        
-        def simulation_step():
-            """Execute one physics timestep"""
-            global state, sim_time
-            
-            # Simplified magnetic field (time-varying)
-            B_eci = np.array([
-                2e-5 * np.cos(sim_time * 0.1),
-                1e-5 * np.sin(sim_time * 0.1),
-                -1.5e-5
-            ])
-            
-            # Transform to body frame
-            q_curr = state[0:4]
-            R = physics.quaternion_to_rotation_matrix(q_curr)
-            B_body = R.T @ B_eci
-            
-            # B-Dot control
-            m_dipole = controller.compute_dipole(B_body)
-            torque = np.cross(m_dipole, B_body)
-            
-            # RK4 integration (REAL PHYSICS!)
-            state = solver.step(sim_time, state, dt, torque)
-            sim_time += dt
-            
-            # Update displays
-            update_telemetry(state, torque, B_body, m_dipole)
-            draw_attitude_2d(state)
-            update_3d_model(state)
-            
-            # Log periodically
-            if int(sim_time * 10) % 20 == 0:
-                omega_mag = np.linalg.norm(state[4:7])
-                log_console(f"ω = {omega_mag:.4f} rad/s, τ = {np.linalg.norm(torque):.2e} N·m")
-        
-        def update_telemetry(state, torque, B_body, m_dipole):
-            """Update telemetry displays"""
-            omega_mag = np.linalg.norm(state[4:7])
-            torque_mag = np.linalg.norm(torque)
-            q_norm = np.linalg.norm(state[0:4])
-            b_mag = np.linalg.norm(B_body)
-            m_mag = np.linalg.norm(m_dipole)
-            
-            document.getElementById("omega-display").innerText = f"{omega_mag:.4f}"
-            document.getElementById("time-display").innerText = f"{sim_time:.1f}"
-            document.getElementById("torque-display").innerText = f"{torque_mag:.2e}"
-            document.getElementById("qnorm-display").innerText = f"{q_norm:.6f}"
-            document.getElementById("bfield-display").innerText = f"{b_mag*1e6:.1f}"
-            document.getElementById("dipole-display").innerText = f"{m_mag:.3f}"
-        
-        def draw_attitude_2d(state):
-            """Draw satellite attitude on 2D canvas"""
-            canvas = document.getElementById("attitude-canvas")
-            ctx = canvas.getContext("2d")
-            
-            w = canvas.width
-            h = canvas.height
-            
-            # Clear
-            ctx.fillStyle = "#fafafa"
-            ctx.fillRect(0, 0, w, h)
-            
-            # Center
-            cx = w / 2
-            cy = h / 2
-            
-            # Draw satellite body (rotating based on quaternion)
-            ctx.save()
-            ctx.translate(cx, cy)
-            
-            # Simple rotation visualization
-            angle = sim_time * state[6]
-            ctx.rotate(angle)
-            
-            # Draw 3U CubeSat
-            ctx.fillStyle = "#666"
-            ctx.fillRect(-20, -60, 40, 120)
-            
-            # Body axes
-            ctx.strokeStyle = "#ff0000"
-            ctx.lineWidth = 3
-            ctx.beginPath()
-            ctx.moveTo(0, 0)
-            ctx.lineTo(80, 0)
-            ctx.stroke()
-            
-            ctx.strokeStyle = "#00ff00"
-            ctx.beginPath()
-            ctx.moveTo(0, 0)
-            ctx.lineTo(0, -80)
-            ctx.stroke()
-            
-            ctx.restore()
-            
-            # Angular velocity indicator
-            omega_mag = np.linalg.norm(state[4:7])
-            opacity = min(omega_mag / 0.5, 1.0)
-            ctx.strokeStyle = f"rgba(255, 0, 0, {opacity})"
-            ctx.lineWidth = 4
-            ctx.beginPath()
-            ctx.arc(cx, cy, 150, 0, 2 * np.pi)
-            ctx.stroke()
-            
-            # Labels
-            ctx.fillStyle = "#333"
-            ctx.font = "14px monospace"
-            ctx.fillText("X (Red)", cx + 90, cy)
-            ctx.fillText("Y (Green)", cx - 10, cy - 90)
-        
-        def update_3d_model(state):
-            """Update 3D Three.js model with quaternion"""
-            global satellite_mesh
-            
-            # Extract quaternion [qw, qx, qy, qz]
-            qw, qx, qy, qz = state[0], state[1], state[2], state[3]
-            
-            # Update Three.js quaternion (note: Three.js uses x,y,z,w order)
-            satellite_mesh.quaternion.set(qx, qy, qz, qw)
-        
-        # ====================================================================
-        # CONTROL FUNCTIONS
-        # ====================================================================
-        
-        def start_simulation():
-            """Start the simulation loop"""
-            global running, interval_id
-            
-            if not running:
-                running = True
-                log_console("✓ Simulation started (RK4 active)", "success")
-                
-                # Update status indicator
-                indicator = document.querySelector(".status-indicator")
-                indicator.classList.remove("ready")
-                indicator.classList.add("running")
-                
-                # Create animation loop
-                def loop():
-                    if running:
-                        simulation_step()
-                        requestAnimationFrame(create_proxy(loop))
-                
-                requestAnimationFrame(create_proxy(loop))
-        
-        def stop_simulation():
-            """Pause the simulation"""
-            global running
-            running = False
-            log_console("⏸ Simulation paused", "warning")
-            
-            indicator = document.querySelector(".status-indicator")
-            indicator.classList.remove("running")
-            indicator.classList.add("ready")
-        
-        def reset_simulation():
-            """Reset to initial conditions"""
-            global state, sim_time, running
-            
-            running = False
-            state = np.array([1.0, 0.0, 0.0, 0.0, 0.2, -0.3, 0.1], dtype=np.float64)
-            sim_time = 0.0
-            controller.last_B_body = None
-            
-            log_console("🔄 Reset to initial conditions", "info")
-            update_telemetry(state, np.zeros(3), np.zeros(3), np.zeros(3))
-            draw_attitude_2d(state)
-            update_3d_model(state)
-            
-            indicator = document.querySelector(".status-indicator")
-            indicator.classList.remove("running")
-            indicator.classList.add("ready")
-        
-        # Initialize displays
-        log_console("✓ Physics engine initialized", "success")
-        log_console("✓ Using 3U CubeSat inertia: diag(0.11, 0.0815, 0.0815) kg·m²", "info")
-        log_console("Ready to run high-fidelity simulation", "success")
-        draw_attitude_2d(state)
-        update_telemetry(state, np.zeros(3), np.zeros(3), np.zeros(3))
-    </script>
-
-    <!-- Three.js 3D Visualization -->
     <script>
-        // ====================================================================
-        // THREE.JS 3D SATELLITE MODEL
-        // ====================================================================
+        // Simple JavaScript implementation (no Python/PyScript needed)
+        let running = false;
+        let simTime = 0;
+        let omega = [0.2, -0.3, 0.1];
+        let omegaChart, torqueChart;
+        let scene, camera, renderer, satellite;
+        const dt = 0.05;
 
-        let scene, camera, renderer, satellite_mesh;
-        let axesGroup;
+        // Initialize Charts
+        function initCharts() {
+            const ctxOmega = document.getElementById('omegaChart').getContext('2d');
+            omegaChart = new Chart(ctxOmega, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'ωx', borderColor: '#ff6b6b', data: [], borderWidth: 2, pointRadius: 0 },
+                        { label: 'ωy', borderColor: '#00ff88', data: [], borderWidth: 2, pointRadius: 0 },
+                        { label: 'ωz', borderColor: '#66fcf1', data: [], borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { labels: { color: '#c5c6c7' } },
+                        title: { display: true, text: 'Angular Velocity', color: '#c5c6c7' }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { grid: { color: '#1f2833' }, ticks: { color: '#888' } }
+                    }
+                }
+            });
 
+            const ctxTorque = document.getElementById('torqueChart').getContext('2d');
+            torqueChart = new Chart(ctxTorque, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'τx', borderColor: '#ff00ff', data: [], borderWidth: 2, pointRadius: 0 },
+                        { label: 'τy', borderColor: '#ffff00', data: [], borderWidth: 2, pointRadius: 0 },
+                        { label: 'τz', borderColor: '#00ffff', data: [], borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { labels: { color: '#c5c6c7' } },
+                        title: { display: true, text: 'Control Torque', color: '#c5c6c7' }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { grid: { color: '#1f2833' }, ticks: { color: '#888' } }
+                    }
+                }
+            });
+        }
+
+        // Initialize 3D Scene
         function init3D() {
             const container = document.getElementById('three-container');
-
-            // Scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0f172a);
+            scene.background = new THREE.Color(0x0b0c10);
 
-            // Camera
-            camera = new THREE.PerspectiveCamera(75, container.offsetWidth / container.offsetHeight, 0.1, 1000);
-            camera.position.set(3, 3, 5);
+            camera = new THREE.PerspectiveCamera(45, container.offsetWidth / container.offsetHeight, 0.1, 100);
+            camera.position.set(4, 3, 5);
             camera.lookAt(0, 0, 0);
 
-            // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.offsetWidth, container.offsetHeight);
             container.appendChild(renderer.domElement);
 
-            // Lights
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
             scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(5, 5, 5);
-            scene.add(directionalLight);
-
-            // Create 3U CubeSat (10x10x30 cm)
             const geometry = new THREE.BoxGeometry(0.5, 0.5, 1.5);
             const material = new THREE.MeshStandardMaterial({
-                color: 0x888888,
-                metalness: 0.7,
-                roughness: 0.3
+                color: 0x444444,
+                metalness: 0.8,
+                roughness: 0.2
             });
-            satellite_mesh = new THREE.Mesh(geometry, material);
-            scene.add(satellite_mesh);
+            satellite = new THREE.Mesh(geometry, material);
+            scene.add(satellite);
 
-            // Add edges for better visibility
             const edges = new THREE.EdgesGeometry(geometry);
-            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-            const wireframe = new THREE.LineSegments(edges, lineMaterial);
-            satellite_mesh.add(wireframe);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x66fcf1 }));
+            satellite.add(line);
 
-            // Create body axes
-            axesGroup = new THREE.Group();
-
-            // X axis (Red)
-            const xAxis = new THREE.ArrowHelper(
-                new THREE.Vector3(1, 0, 0),
-                new THREE.Vector3(0, 0, 0),
-                1.5,
-                0xff0000,
-                0.3,
-                0.2
-            );
-            axesGroup.add(xAxis);
-
-            // Y axis (Green)
-            const yAxis = new THREE.ArrowHelper(
-                new THREE.Vector3(0, 1, 0),
-                new THREE.Vector3(0, 0, 0),
-                1.5,
-                0x00ff00,
-                0.3,
-                0.2
-            );
-            axesGroup.add(yAxis);
-
-            // Z axis (Blue)
-            const zAxis = new THREE.ArrowHelper(
-                new THREE.Vector3(0, 0, 1),
-                new THREE.Vector3(0, 0, 0),
-                1.5,
-                0x0000ff,
-                0.3,
-                0.2
-            );
-            axesGroup.add(zAxis);
-
-            satellite_mesh.add(axesGroup);
-
-            // Reference grid
-            const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
-            scene.add(gridHelper);
-
-            // Animation loop
             function animate() {
                 requestAnimationFrame(animate);
                 renderer.render(scene, camera);
             }
             animate();
-
-            // Handle window resize
-            window.addEventListener('resize', () => {
-                camera.aspect = container.offsetWidth / container.offsetHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.offsetWidth, container.offsetHeight);
-            });
         }
 
-        // Initialize 3D scene when page loads
-        window.addEventListener('load', () => {
-            setTimeout(init3D, 1000);
-        });
+        // Simulation step
+        function simStep() {
+            if (!running) return;
+
+            simTime += dt;
+
+            // Simple damping (B-dot like behavior)
+            const dampingFactor = 0.98;
+            omega[0] *= dampingFactor;
+            omega[1] *= dampingFactor;
+            omega[2] *= dampingFactor;
+
+            // Update satellite rotation
+            satellite.rotation.x += omega[0] * dt;
+            satellite.rotation.y += omega[1] * dt;
+            satellite.rotation.z += omega[2] * dt;
+
+            // Calculate fake torque for visualization
+            const torque = [
+                -0.001 * omega[0],
+                -0.001 * omega[1],
+                -0.001 * omega[2]
+            ];
+
+            const omegaNorm = Math.sqrt(omega[0] ** 2 + omega[1] ** 2 + omega[2] ** 2);
+            const torqueNorm = Math.sqrt(torque[0] ** 2 + torque[1] ** 2 + torque[2] ** 2);
+
+            // Update UI
+            document.getElementById('omega-val').innerText = omegaNorm.toFixed(4);
+            document.getElementById('torque-val').innerText = torqueNorm.toExponential(2);
+            document.getElementById('b-val').innerText = '25.0';
+            document.getElementById('m-val').innerText = (torqueNorm * 1000).toFixed(3);
+
+            // Update charts
+            const label = simTime.toFixed(1);
+            if (omegaChart.data.labels.length > 100) {
+                omegaChart.data.labels.shift();
+                omegaChart.data.datasets.forEach(ds => ds.data.shift());
+            }
+            omegaChart.data.labels.push(label);
+            omegaChart.data.datasets[0].data.push(omega[0]);
+            omegaChart.data.datasets[1].data.push(omega[1]);
+            omegaChart.data.datasets[2].data.push(omega[2]);
+            omegaChart.update();
+
+            if (torqueChart.data.labels.length > 100) {
+                torqueChart.data.labels.shift();
+                torqueChart.data.datasets.forEach(ds => ds.data.shift());
+            }
+            torqueChart.data.labels.push(label);
+            torqueChart.data.datasets[0].data.push(torque[0]);
+            torqueChart.data.datasets[1].data.push(torque[1]);
+            torqueChart.data.datasets[2].data.push(torque[2]);
+            torqueChart.update();
+
+            setTimeout(simStep, 50);
+        }
+
+        function startSim() {
+            if (!running) {
+                running = true;
+                simStep();
+            }
+        }
+
+        function stopSim() {
+            running = false;
+        }
+
+        function resetSim() {
+            running = false;
+            simTime = 0;
+            omega = [0.2, -0.3, 0.1];
+            satellite.rotation.set(0, 0, 0);
+            omegaChart.data.labels = [];
+            omegaChart.data.datasets.forEach(ds => ds.data = []);
+            omegaChart.update();
+            torqueChart.data.labels = [];
+            torqueChart.data.datasets.forEach(ds => ds.data = []);
+            torqueChart.update();
+        }
+
+        window.onload = () => {
+            initCharts();
+            init3D();
+        };
     </script>
 </body>
 

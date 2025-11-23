@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADCS Mission Control</title>
+
+    <!-- Libraries -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --panel-bg: #1f2833;
+            --text-color: #c5c6c7;
+            --accent-cyan: #66fcf1;
+            --accent-dark: #45a29e;
+            --alert-red: #fc4445;
+            --success-green: #00ff88;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 2px;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .header {
+            background: var(--panel-bg);
+            border-bottom: 2px solid var(--accent-dark);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .status-badge {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--accent-dark);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--success-green);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            grid-template-rows: 2fr 1fr;
+            gap: 10px;
+            padding: 10px;
+            height: calc(100vh - 60px);
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent-dark);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--accent-dark);
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #viewport-3d {
+            grid-column: 1 / 2;
+            grid-row: 1 / 3;
+            position: relative;
+        }
+
+        #three-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        .overlay-ui {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            pointer-events: none;
+        }
+
+        .vector-legend {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border: 1px solid var(--accent-dark);
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .color-box {
+            width: 12px;
+            height: 12px;
+            margin-right: 8px;
+            border: 1px solid #fff;
+        }
+
+        #graphs-panel {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 5px;
+        }
+
+        .chart-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+
+        #telemetry-panel {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            padding: 10px;
+            flex: 1;
+        }
+
+        .telemetry-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px;
+            border-left: 2px solid var(--accent-cyan);
+        }
+
+        .telemetry-label {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        .telemetry-value {
+            font-size: 1.1rem;
+            color: var(--success-green);
+        }
+
+        .controls {
+            padding: 10px;
+            border-top: 1px solid var(--accent-dark);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 5px 15px;
+            font-family: inherit;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: var(--accent-cyan);
+            color: #000;
+            box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        button.danger {
+            border-color: var(--alert-red);
+            color: var(--alert-red);
+        }
+
+        button.danger:hover {
+            background: var(--alert-red);
+            color: #fff;
+            box-shadow: 0 0 10px var(--alert-red);
+        }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+
+        .loader {
+            border: 4px solid var(--panel-bg);
+            border-top: 4px solid var(--accent-cyan);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading-overlay">
+        <div class="loader"></div>
+        <h2>INITIALIZING MISSION CONTROL...</h2>
+        <p>Loading Physics Engine & Telemetry Systems</p>
+    </div>
+
+    <div class="header">
+        <h1>ADCS Mission Control</h1>
+        <div class="status-badge">SYSTEM: ONLINE</div>
+    </div>
+
+    <div class="main-grid">
+        <div class="panel" id="viewport-3d">
+            <div class="panel-header">
+                <span>Real-Time Attitude Visualization</span>
+                <span>CAM: ORBITAL</span>
+            </div>
+            <div id="three-container"></div>
+            <div class="overlay-ui">
+                <div class="vector-legend">
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #ffff00;"></div>
+                        <span>Magnetic Field (B)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #ff00ff;"></div>
+                        <span>Control Torque (τ)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #00ffff;"></div>
+                        <span>Angular Velocity (ω)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" id="graphs-panel">
+            <div class="panel-header">Telemetry Plots</div>
+            <div class="chart-container">
+                <canvas id="omegaChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="torqueChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel" id="telemetry-panel">
+            <div class="panel-header">System Status</div>
+            <div class="telemetry-grid">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">ANGULAR VELOCITY (rad/s)</div>
+                    <div class="telemetry-value" id="omega-val">0.0000</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">TORQUE (N·m)</div>
+                    <div class="telemetry-value" id="torque-val">0.00e+0</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">MAGNETIC FIELD (µT)</div>
+                    <div class="telemetry-value" id="b-val">0.0</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">DIPOLE MOMENT (Am²)</div>
+                    <div class="telemetry-value" id="m-val">0.000</div>
+                </div>
+            </div>
+            <div class="controls">
+                <button onclick="start_simulation()">Initialize</button>
+                from js import Chart, THREE
+                import traceback
+
+                try:
+                from pyodide.ffi import create_proxy
+                except:
+                from pyodide import create_proxy
+
+                print("Python: Starting initialization...")
+
+                try:
+                class SatellitePhysics:
+                def __init__(self, inertia_matrix):
+                self.J = np.array(inertia_matrix, dtype=np.float64)
+                self.J_inv = np.linalg.inv(self.J)
+
+                def normalize_quaternion(self, state):
+                q = state[0:4]
+                norm = np.linalg.norm(q)
+                if norm > 1e-9:
+                state[0:4] = q / norm
+                return state
+
+                def state_derivative(self, t, state, applied_torque_body):
+                q = state[0:4]
+                w = state[4:7]
+
+                Omega = np.array([
+                [0, -w[0], -w[1], -w[2]],
+                [w[0], 0, w[2], -w[1]],
+                [w[1], -w[2], 0, w[0]],
+                [w[2], w[1], -w[0], 0]
+                ])
+                q_dot = 0.5 * np.dot(Omega, q)
+
+                Jw = np.dot(self.J, w)
+                gyroscopic_torque = np.cross(w, Jw)
+                net_torque = applied_torque_body - gyroscopic_torque
+                w_dot = np.dot(self.J_inv, net_torque)
+
+                return np.concatenate((q_dot, w_dot))
+
+                class RK4Solver:
+                def __init__(self, physics_engine):
+                self.physics = physics_engine
+
+                def step(self, t, state, dt, torque):
+                k1 = dt * self.physics.state_derivative(t, state, torque)
+                k2 = dt * self.physics.state_derivative(t + 0.5*dt, state + 0.5*k1, torque)
+                k3 = dt * self.physics.state_derivative(t + 0.5*dt, state + 0.5*k2, torque)
+                k4 = dt * self.physics.state_derivative(t + dt, state + k3, torque)
+                new_state = state + (k1 + 2*k2 + 2*k3 + k4) / 6.0
+                return self.physics.normalize_quaternion(new_state)
+
+                class BDotController:
+                def __init__(self, gain, dt_control):
+                self.k = gain
+                self.dt = dt_control
+                self.last_B_body = None
+                self.max_dipole = 0.15
+
+                def compute_dipole(self, current_B_body):
+                if self.last_B_body is None:
+                self.last_B_body = current_B_body.copy()
+                return np.zeros(3)
+
+                b_dot = (current_B_body - self.last_B_body) / self.dt
+                m_command = -self.k * b_dot
+                m_command = np.clip(m_command, -self.max_dipole, self.max_dipole)
+                self.last_B_body = current_B_body.copy()
+                return m_command
+
+                J_3U = [[0.11, 0, 0], [0, 0.0815, 0], [0, 0, 0.0815]]
+                physics = SatellitePhysics(J_3U)
+                solver = RK4Solver(physics)
+                controller = BDotController(gain=50000.0, dt_control=0.1)
+
+                state = np.array([1.0, 0.0, 0.0, 0.0, 0.2, -0.3, 0.1], dtype=np.float64)
+                sim_time = 0.0
+                dt = 0.05
+                running = False
+
+                def update_charts(time, w, torque):
+                if hasattr(window, 'updateGraphData'):
+                window.updateGraphData(time, list(w), list(torque))
+
+                def update_3d(state, B_body, torque):
+                if hasattr(window, 'update3DScene'):
+                window.update3DScene(list(state[0:4]), list(state[4:7]), list(B_body), list(torque))
+
+                def simulation_step():
+                global state, sim_time
+
+                B_eci = np.array([
+                2e-5 * np.cos(sim_time * 0.1),
+                1e-5 * np.sin(sim_time * 0.1),
+                -1.5e-5
+                ])
+
+                B_body = B_eci
+                m_dipole = controller.compute_dipole(B_body)
+                torque = np.cross(m_dipole, B_body)
+
+                state = solver.step(sim_time, state, dt, torque)
+                sim_time += dt
+
+                w = state[4:7]
+                document.getElementById("omega-val").innerText = f"{np.linalg.norm(w):.4f}"
+                document.getElementById("torque-val").innerText = f"{np.linalg.norm(torque):.2e}"
+                document.getElementById("b-val").innerText = f"{np.linalg.norm(B_body)*1e6:.1f}"
+                document.getElementById("m-val").innerText = f"{np.linalg.norm(m_dipole):.3f}"
+
+                update_charts(sim_time, w, torque)
+                update_3d(state, B_body, torque)
+
+                def loop():
+                if running:
+                try:
+                simulation_step()
+                window.requestAnimationFrame(create_proxy(loop))
+                except Exception as e:
+                print(f"Loop Error: {e}")
+
+                def start_simulation(event=None):
+                global running
+                if not running:
+                running = True
+                loop()
+
+                def stop_simulation(event=None):
+                global running
+                running = False
+
+                def reset_simulation(event=None):
+                global state, sim_time, running
+                running = False
+                state = np.array([1.0, 0.0, 0.0, 0.0, 0.2, -0.3, 0.1], dtype=np.float64)
+                sim_time = 0.0
+                controller.last_B_body = None
+                if hasattr(window, 'resetGraphs'):
+                window.resetGraphs()
+                update_3d(state, np.zeros(3), np.zeros(3))
+
+                window.start_simulation = start_simulation
+                window.stop_simulation = stop_simulation
+                window.reset_simulation = reset_simulation
+
+                print("Python Initialization Complete")
+
+                if document.getElementById("loading-overlay"):
+                document.getElementById("loading-overlay").style.display = "none"
+
+                except Exception as e:
+                print(f"Python Error: {e}")
+                traceback.print_exc()
+                if document.getElementById("loading-overlay"):
+                document.getElementById("loading-overlay").style.display = "none"
+                </script>
+
+                <script>
+                    let omegaChart, torqueChart;
+                    const maxDataPoints = 100;
+
+                    function initCharts() {
+                        const ctxOmega = document.getElementById('omegaChart').getContext('2d');
+                        omegaChart = new Chart(ctxOmega, {
+                            type: 'line',
+                            data: {
+                                labels: [],
+                                datasets: [
+                                    { label: 'ωx', borderColor: '#ff6b6b', data: [], borderWidth: 1, pointRadius: 0 },
+                                    { label: 'ωy', borderColor: '#00ff88', data: [], borderWidth: 1, pointRadius: 0 },
+                                    { label: 'ωz', borderColor: '#66fcf1', data: [], borderWidth: 1, pointRadius: 0 }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                animation: false,
+                                plugins: {
+                                    legend: { labels: { color: '#c5c6c7' } },
+                                    title: { display: true, text: 'Angular Velocity (rad/s)', color: '#c5c6c7' }
+                                },
+                                scales: {
+                                    x: { display: false },
+                                    y: { grid: { color: '#1f2833' }, ticks: { color: '#888' } }
+                                }
+                            }
+                        });
+
+                        const ctxTorque = document.getElementById('torqueChart').getContext('2d');
+                        torqueChart = new Chart(ctxTorque, {
+                            type: 'line',
+                            data: {
+                                labels: [],
+                                datasets: [
+                                    { label: 'τx', borderColor: '#ff00ff', data: [], borderWidth: 1, pointRadius: 0 },
+                                    { label: 'τy', borderColor: '#ffff00', data: [], borderWidth: 1, pointRadius: 0 },
+                                    { label: 'τz', borderColor: '#00ffff', data: [], borderWidth: 1, pointRadius: 0 }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                animation: false,
+                                plugins: {
+                                    legend: { labels: { color: '#c5c6c7' } },
+                                    title: { display: true, text: 'Control Torque (N·m)', color: '#c5c6c7' }
+                                },
+                                scales: {
+                                    x: { display: false },
+                                    y: { grid: { color: '#1f2833' }, ticks: { color: '#888' } }
+                                }
+                            }
+                        });
+                    }
+
+                    window.updateGraphData = (time, w, torque) => {
+                        const label = time.toFixed(1);
+
+                        if (omegaChart.data.labels.length > maxDataPoints) omegaChart.data.labels.shift();
+                        omegaChart.data.labels.push(label);
+                        omegaChart.data.datasets[0].data.push(w[0]);
+                        omegaChart.data.datasets[1].data.push(w[1]);
+                        omegaChart.data.datasets[2].data.push(w[2]);
+                        if (omegaChart.data.datasets[0].data.length > maxDataPoints) {
+                            omegaChart.data.datasets.forEach(ds => ds.data.shift());
+                        }
+                        omegaChart.update();
+
+                        if (torqueChart.data.labels.length > maxDataPoints) torqueChart.data.labels.shift();
+                        torqueChart.data.labels.push(label);
+                        torqueChart.data.datasets[0].data.push(torque[0]);
+                        torqueChart.data.datasets[1].data.push(torque[1]);
+                        torqueChart.data.datasets[2].data.push(torque[2]);
+                        if (torqueChart.data.datasets[0].data.length > maxDataPoints) {
+                            torqueChart.data.datasets.forEach(ds => ds.data.shift());
+                        }
+                        torqueChart.update();
+                    };
+
+                    window.resetGraphs = () => {
+                        omegaChart.data.labels = [];
+                        omegaChart.data.datasets.forEach(ds => ds.data = []);
+                        omegaChart.update();
+                        torqueChart.data.labels = [];
+                        torqueChart.data.datasets.forEach(ds => ds.data = []);
+                        torqueChart.update();
+                    };
+
+                    let scene, camera, renderer, satellite, arrowB, arrowTorque, arrowOmega;
+
+                    function init3D() {
+                        const container = document.getElementById('three-container');
+                        scene = new THREE.Scene();
+                        scene.background = new THREE.Color(0x0b0c10);
+
+                        const starsGeometry = new THREE.BufferGeometry();
+                        const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05 });
+                        const starsVertices = [];
+                        for (let i = 0; i < 1000; i++) {
+                            const x = (Math.random() - 0.5) * 20;
+                            const y = (Math.random() - 0.5) * 20;
+                            const z = (Math.random() - 0.5) * 20;
+                            starsVertices.push(x, y, z);
+                        }
+                        starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+                        const starField = new THREE.Points(starsGeometry, starsMaterial);
+                        scene.add(starField);
+
+                        camera = new THREE.PerspectiveCamera(45, container.offsetWidth / container.offsetHeight, 0.1, 100);
+                        camera.position.set(4, 3, 5);
+                        camera.lookAt(0, 0, 0);
+
+                        renderer = new THREE.WebGLRenderer({ antialias: true });
+                        renderer.setSize(container.offsetWidth, container.offsetHeight);
+                        container.appendChild(renderer.domElement);
+
+                        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+                        scene.add(ambientLight);
+                        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+                        dirLight.position.set(5, 5, 5);
+                        scene.add(dirLight);
+
+                        const geometry = new THREE.BoxGeometry(0.5, 0.5, 1.5);
+                        const material = new THREE.MeshStandardMaterial({
+                            color: 0x444444,
+                            metalness: 0.8,
+                            roughness: 0.2,
+                            emissive: 0x111111
+                        });
+                        satellite = new THREE.Mesh(geometry, material);
+                        scene.add(satellite);
+
+                        const edges = new THREE.EdgesGeometry(geometry);
+                        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x66fcf1 }));
+                        satellite.add(line);
+
+                        arrowB = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 2, 0xffff00);
+                        scene.add(arrowB);
+
+                        arrowTorque = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 2, 0xff00ff);
+                        scene.add(arrowTorque);
+
+                        arrowOmega = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 2, 0x00ffff);
+                        scene.add(arrowOmega);
+
+                        function animate() {
+                            requestAnimationFrame(animate);
+                            renderer.render(scene, camera);
+                        }
+                        animate();
+
+                        window.addEventListener('resize', () => {
+                            camera.aspect = container.offsetWidth / container.offsetHeight;
+                            camera.updateProjectionMatrix();
+                            renderer.setSize(container.offsetWidth, container.offsetHeight);
+                        });
+                    }
+
+                    window.update3DScene = (q, w, B, torque) => {
+                        satellite.quaternion.set(q[1], q[2], q[3], q[0]);
+
+                        const vB = new THREE.Vector3(B[0], B[1], B[2]);
+                        if (vB.length() > 0) arrowB.setDirection(vB.normalize());
+
+                        const vT = new THREE.Vector3(torque[0], torque[1], torque[2]);
+                        if (vT.length() > 0) arrowTorque.setDirection(vT.normalize());
+
+                        const vW = new THREE.Vector3(w[0], w[1], w[2]);
+                        if (vW.length() > 0) arrowOmega.setDirection(vW.normalize());
+                    };
+
+                    window.onload = () => {
+                        initCharts();
+                        init3D();
+                    };
+
+                    setTimeout(() => {
+                        const overlay = document.getElementById("loading-overlay");
+                        if (overlay && overlay.style.display !== "none") {
+                            console.warn("Loading overlay timed out. Forcing hide.");
+                            overlay.style.display = "none";
+                        }
+                    }, 5000);
+                </script>
+</body>
+
+</html>
