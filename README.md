@@ -4,6 +4,8 @@ A comprehensive Python-based simulator for Attitude Determination and Control Sy
 
 ![ADCS Simulator](https://github.com/user-attachments/assets/a8ce415d-a6c2-4e7b-9181-92be3d825e75)
 
+<img width="1063" height="811" alt="image" src="https://github.com/user-attachments/assets/f7f401a8-bdaf-48f5-9a05-abee6616b7d5" />
+
 <img width="1002" height="1004" alt="image" src="https://github.com/user-attachments/assets/9e072bf4-eb58-4caf-8aa2-91606a1bca3b" />
 
 <img width="1019" height="1003" alt="image" src="https://github.com/user-attachments/assets/488ea5e6-fe42-4e49-ab11-79ea867500dd" />
